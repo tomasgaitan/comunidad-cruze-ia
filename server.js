@@ -3,6 +3,7 @@ const express = require('express');
 const axios = require('axios');
 const Anthropic = require('@anthropic-ai/sdk');
 const { Redis } = require('@upstash/redis');
+const path = require('path');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -172,6 +173,10 @@ function buildSourcesContext(results) {
 }
 
 // --- Routes ---
+
+app.get('/admin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/admin.html'));
+});
 
 app.get('/api/recent-queries', (req, res) => {
   res.json({ queries: recentQueries });

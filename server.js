@@ -329,7 +329,7 @@ app.get('/api/admin/stats', async (req, res) => {
     globalLimit: GLOBAL_LIMIT,
     uniqueIpsToday: uniqueIpsRaw.length,
     serpapiThisMonth: serpapiThisMonth || 0,
-    serpapiMonthlyLimit: 100,
+    serpapiMonthlyLimit: 250,
     cacheEfficiency,
     totalRequests,
   });

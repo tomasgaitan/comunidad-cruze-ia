@@ -476,8 +476,7 @@
           }).join(''));
     }
 
-    function renderAnswer(text) {
-      // Simple but effective markdown renderer
+    function renderAnswer(text, sources) {
       let html = text;
 
       // Headers
@@ -488,8 +487,14 @@
       html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
       html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
 
-      // Citations
-      html = html.replace(/\[(\d+)\]/g, '<sup class="text-yellow-400 font-bold text-xs">[$1]</sup>');
+      // Citations → links directos a la fuente
+      html = html.replace(/\[(\d+)\]/g, (match, n) => {
+        const source = sources && sources.find(s => s.index === parseInt(n));
+        if (source) {
+          return `<a href="${source.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-cruze-red text-white text-[10px] font-bold no-underline hover:bg-cruze-darkred transition-colors align-super ml-0.5" title="${escapeHtml(source.title)}">${n}</a>`;
+        }
+        return `<sup class="text-yellow-400 font-bold text-xs">[${n}]</sup>`;
+      });
 
       // Lists: collect consecutive list lines and wrap them
       html = html.replace(/((?:^[-*] .+\n?)+)/gm, match => {
@@ -554,7 +559,7 @@
           return;
         }
 
-        renderAnswer(data.answer);
+        renderAnswer(data.answer, data.sources);
         renderSources(data.sources);
 
         // Badge de caché

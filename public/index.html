@@ -115,6 +115,57 @@
       padding: 2px 8px;
       border-radius: 99px;
     }
+
+    .ticker-wrap {
+      overflow: hidden;
+      background: rgba(204, 0, 0, 0.08);
+      border-top: 1px solid rgba(204, 0, 0, 0.2);
+      border-bottom: 1px solid rgba(204, 0, 0, 0.2);
+      padding: 8px 0;
+      position: relative;
+    }
+    .ticker-wrap::before,
+    .ticker-wrap::after {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 80px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .ticker-wrap::before {
+      left: 0;
+      background: linear-gradient(to right, #0a0a0a, transparent);
+    }
+    .ticker-wrap::after {
+      right: 0;
+      background: linear-gradient(to left, #0a0a0a, transparent);
+    }
+    .ticker-track {
+      display: flex;
+      width: max-content;
+      animation: ticker-scroll 30s linear infinite;
+    }
+    .ticker-track:hover { animation-play-state: paused; }
+    @keyframes ticker-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 28px;
+      white-space: nowrap;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+    .ticker-dot {
+      width: 4px; height: 4px;
+      background: #CC0000;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body class="gradient-bg min-h-screen text-gray-100">
@@ -130,6 +181,11 @@
       <span class="text-sm font-medium text-gray-400">Comunidad Cruze IA</span>
     </div>
   </header>
+
+  <!-- Ticker -->
+  <div id="tickerWrap" class="ticker-wrap hidden">
+    <div id="tickerTrack" class="ticker-track"></div>
+  </div>
 
   <!-- Hero -->
   <main class="max-w-4xl mx-auto px-6 pt-16 pb-10">
@@ -317,6 +373,43 @@
 
     fetchQuota();
 
+    // --- Ticker ---
+    const tickerWrap = document.getElementById('tickerWrap');
+    const tickerTrack = document.getElementById('tickerTrack');
+    const SEED_QUERIES = [
+      'Consumo real del 1.4 Turbo en ciudad',
+      'Cambio de aceite motor 1.6 cada cuántos km',
+      'Problemas comunes Cruze 2013',
+      'Diferencia entre LT y LTZ',
+      'Chip de potencia vale la pena',
+      'Luz de check engine qué significa',
+      'Frenos de disco delanteros cuándo cambiar',
+    ];
+
+    function buildTicker(queries) {
+      const items = queries.length >= 3 ? queries : [...queries, ...SEED_QUERIES].slice(0, 10);
+      const html = items.map(q =>
+        `<span class="ticker-item"><span class="ticker-dot"></span>${q}</span>`
+      ).join('');
+      tickerTrack.innerHTML = html + html;
+      tickerWrap.classList.remove('hidden');
+      const speed = Math.max(20, items.length * 4);
+      tickerTrack.style.animationDuration = speed + 's';
+    }
+
+    async function fetchRecentQueries() {
+      try {
+        const res = await fetch('/api/recent-queries');
+        const data = await res.json();
+        buildTicker(data.queries.length >= 3 ? data.queries : SEED_QUERIES);
+      } catch {
+        buildTicker(SEED_QUERIES);
+      }
+    }
+
+    fetchRecentQueries();
+    setInterval(fetchRecentQueries, 30000);
+
     // Example query buttons
     document.querySelectorAll('.example-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -498,6 +591,7 @@
         }
 
         if (data.remaining !== undefined) updateQuota(data.remaining);
+        if (!data.fromCache) fetchRecentQueries();
         results.classList.remove('hidden');
         results.classList.add('fade-in');
         results.scrollIntoView({ behavior: 'smooth', block: 'start' });

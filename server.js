@@ -14,6 +14,9 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const IP_LIMIT = 5;
 const GLOBAL_LIMIT = 50;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_RECENT = 20;
+
+let recentQueries = [];
 
 // --- Estado en memoria (cargado desde disco al iniciar) ---
 // Evita leer archivos en cada request y elimina race conditions de I/O.
@@ -69,6 +72,10 @@ function saveCacheEntry(query, answer, sources) {
     sources,
     timestamp: new Date().toISOString(),
   });
+}
+
+function addRecentQuery(query) {
+  recentQueries = [query, ...recentQueries.filter(q => q !== query)].slice(0, MAX_RECENT);
 }
 
 // --- Rate limit helpers ---
@@ -134,6 +141,10 @@ function buildSourcesContext(results) {
 }
 
 // --- Routes ---
+
+app.get('/api/recent-queries', (req, res) => {
+  res.json({ queries: recentQueries });
+});
 
 app.get('/api/quota', (req, res) => {
   const ip = getClientIp(req);
@@ -217,9 +228,9 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
       displayLink: item.displayed_link || item.link,
     }));
 
-    // Guardar en caché antes de responder; si falla, igual respondemos
     try {
       saveCacheEntry(trimmedQuery, answer, sources);
+      addRecentQuery(trimmedQuery);
     } catch (cacheErr) {
       console.error('Error guardando en caché:', cacheErr.message);
     }

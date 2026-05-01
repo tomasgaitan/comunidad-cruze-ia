@@ -233,7 +233,12 @@ app.post('/api/search', async (req, res) => {
 
   try {
     const searchResults = await searchGoogle(trimmedQuery);
-    await incrStat('serpapi');
+    const ym = new Date().toISOString().slice(0, 7);
+    await Promise.all([
+      incrStat('serpapi'),
+      redis.incr(`stats:serpapi:month:${ym}`),
+      redis.expire(`stats:serpapi:month:${ym}`, 60 * 60 * 24 * 35),
+    ]);
 
     if (searchResults.length === 0) {
       return res.json({
@@ -308,16 +313,25 @@ app.get('/api/admin/stats', async (req, res) => {
   if (!token || token !== process.env.ADMIN_TOKEN) {
     return res.status(401).json({ error: 'No autorizado.' });
   }
-  const [s, globalUsageToday, uniqueIpsRaw] = await Promise.all([
+  const ym = new Date().toISOString().slice(0, 7);
+  const [s, globalUsageToday, uniqueIpsRaw, serpapiThisMonth] = await Promise.all([
     getStats(),
     redis.get(`rate:global:${today()}`),
     redis.keys(`rate:ip:${today()}:*`),
+    redis.get(`stats:serpapi:month:${ym}`),
   ]);
+  const totalRequests = (s.cacheHits || 0) + (s.cacheMisses || 0);
+  const cacheEfficiency = totalRequests > 0 ? Math.round((s.cacheHits / totalRequests) * 100) : 0;
   res.json({
     ...s,
     cacheSize: cacheStore.length,
     globalUsageToday: globalUsageToday || 0,
+    globalLimit: GLOBAL_LIMIT,
     uniqueIpsToday: uniqueIpsRaw.length,
+    serpapiThisMonth: serpapiThisMonth || 0,
+    serpapiMonthlyLimit: 100,
+    cacheEfficiency,
+    totalRequests,
   });
 });
 

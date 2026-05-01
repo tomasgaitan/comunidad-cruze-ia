@@ -14,186 +14,227 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     * { font-family: 'Inter', sans-serif; }
     .gradient-bg { background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); }
+    .progress-bar { transition: width 0.6s ease; }
   </style>
 </head>
 <body class="gradient-bg min-h-screen text-gray-100">
+<div class="max-w-2xl mx-auto px-6 py-16">
 
-  <div class="max-w-2xl mx-auto px-6 py-16">
-
-    <!-- Login -->
-    <div id="loginSection">
-      <h1 class="text-2xl font-bold mb-2">Panel Admin <span class="text-cruze-red">Cruze IA</span></h1>
-      <p class="text-gray-500 text-sm mb-8">Ingresá tu token para ver las estadísticas.</p>
-      <div class="flex gap-3">
-        <input id="tokenInput" type="password" placeholder="Admin token"
-          class="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-cruze-red transition-colors" />
-        <button onclick="loadStats()"
-          class="bg-cruze-red hover:bg-cruze-darkred text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm">
-          Entrar
-        </button>
-      </div>
-      <p id="loginError" class="hidden text-red-400 text-xs mt-3">Token incorrecto.</p>
+  <!-- Login -->
+  <div id="loginSection">
+    <h1 class="text-2xl font-bold mb-2">Panel Admin <span class="text-cruze-red">Cruze IA</span></h1>
+    <p class="text-gray-500 text-sm mb-8">Ingresá tu token para ver las estadísticas.</p>
+    <div class="flex gap-3">
+      <input id="tokenInput" type="password" placeholder="Admin token"
+        class="flex-1 bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-cruze-red transition-colors" />
+      <button onclick="loadStats()"
+        class="bg-cruze-red hover:bg-cruze-darkred text-white font-semibold px-6 py-3 rounded-xl transition-colors text-sm">
+        Entrar
+      </button>
     </div>
-
-    <!-- Dashboard -->
-    <div id="dashboard" class="hidden">
-      <div class="flex items-center justify-between mb-8">
-        <h1 class="text-2xl font-bold">Panel Admin <span class="text-cruze-red">Cruze IA</span></h1>
-        <span id="lastUpdate" class="text-xs text-gray-600"></span>
-      </div>
-
-      <!-- Costo estimado -->
-      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Costo estimado acumulado</h2>
-      <div class="bg-gray-900 border border-cruze-red rounded-2xl p-5 mb-8">
-        <div class="flex items-end gap-3 mb-3">
-          <p id="statCost" class="text-4xl font-bold text-white">—</p>
-          <p class="text-sm text-gray-500 mb-1">USD</p>
-        </div>
-        <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-800">
-          <div>
-            <p class="text-xs text-gray-500 mb-1">Tokens entrada</p>
-            <p id="statInputTokens" class="text-lg font-semibold text-gray-300">—</p>
-            <p class="text-xs text-gray-600">$3 / M tokens</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-500 mb-1">Tokens salida</p>
-            <p id="statOutputTokens" class="text-lg font-semibold text-gray-300">—</p>
-            <p class="text-xs text-gray-600">$15 / M tokens</p>
-          </div>
-          <div>
-            <p class="text-xs text-gray-500 mb-1">Total tokens</p>
-            <p id="statTotalTokens" class="text-lg font-semibold text-gray-300">—</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- APIs -->
-      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Llamadas a APIs</h2>
-      <div class="grid grid-cols-2 gap-4 mb-8">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">SerpAPI</p>
-          <p id="statSerpapi" class="text-3xl font-bold text-white">—</p>
-          <p class="text-xs text-gray-600 mt-1">búsquedas realizadas</p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">Claude</p>
-          <p id="statClaude" class="text-3xl font-bold text-white">—</p>
-          <p class="text-xs text-gray-600 mt-1">respuestas generadas</p>
-        </div>
-      </div>
-
-      <!-- Cache & Rate -->
-      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Caché y límites</h2>
-      <div class="grid grid-cols-2 gap-4 mb-8">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">Cache hits</p>
-          <p id="statCacheHits" class="text-3xl font-bold text-green-400">—</p>
-          <p class="text-xs text-gray-600 mt-1">sin gastar API</p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">Cache misses</p>
-          <p id="statCacheMisses" class="text-3xl font-bold text-yellow-400">—</p>
-          <p class="text-xs text-gray-600 mt-1">consultas nuevas</p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">Respuestas en caché</p>
-          <p id="statCacheSize" class="text-3xl font-bold text-white">—</p>
-          <p class="text-xs text-gray-600 mt-1">guardadas en sesión</p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">Bloqueados</p>
-          <p id="statBlocked" class="text-3xl font-bold text-red-400">—</p>
-          <p class="text-xs text-gray-600 mt-1">por rate limit</p>
-        </div>
-      </div>
-
-      <!-- Hoy -->
-      <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3">Actividad de hoy</h2>
-      <div class="grid grid-cols-2 gap-4 mb-8">
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">Consultas globales hoy</p>
-          <p id="statGlobal" class="text-3xl font-bold text-white">—</p>
-          <p class="text-xs text-gray-600 mt-1">de 50 máximo</p>
-        </div>
-        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-          <p class="text-xs text-gray-500 mb-1">IPs únicas hoy</p>
-          <p id="statIps" class="text-3xl font-bold text-white">—</p>
-          <p class="text-xs text-gray-600 mt-1">usuarios distintos</p>
-        </div>
-      </div>
-
-      <div class="flex gap-3">
-        <button onclick="loadStats()"
-          class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
-          Actualizar
-        </button>
-        <button onclick="resetIp()"
-          class="bg-cruze-red hover:bg-cruze-darkred text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
-          Resetear mi IP
-        </button>
-      </div>
-      <p id="resetMsg" class="hidden text-green-400 text-xs mt-3"></p>
-      <p class="text-xs text-gray-700 mt-6">Sesión iniciada: <span id="statStarted"></span></p>
-    </div>
+    <p id="loginError" class="hidden text-red-400 text-xs mt-3">Token incorrecto.</p>
   </div>
 
-  <script>
-    let adminToken = '';
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+    <div class="flex items-center justify-between mb-8">
+      <h1 class="text-2xl font-bold">Panel Admin <span class="text-cruze-red">Cruze IA</span></h1>
+      <span id="lastUpdate" class="text-xs text-gray-600"></span>
+    </div>
 
-    async function loadStats() {
-      const input = document.getElementById('tokenInput');
-      adminToken = input ? input.value.trim() : adminToken;
-      if (!adminToken) return;
+    <!-- Costo estimado -->
+    <div class="bg-gray-900 border border-cruze-red rounded-2xl p-5 mb-6">
+      <p class="text-xs text-gray-500 uppercase tracking-widest mb-3">Costo estimado acumulado (Claude)</p>
+      <div class="flex items-end gap-2 mb-4">
+        <p id="statCost" class="text-5xl font-bold text-white">—</p>
+        <p class="text-lg text-gray-500 mb-1">USD</p>
+      </div>
+      <div class="grid grid-cols-3 gap-4 pt-4 border-t border-gray-800">
+        <div>
+          <p class="text-xs text-gray-500 mb-1">Tokens entrada</p>
+          <p id="statInputTokens" class="text-xl font-semibold text-gray-200">—</p>
+          <p class="text-xs text-gray-600">$3 / M tokens</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 mb-1">Tokens salida</p>
+          <p id="statOutputTokens" class="text-xl font-semibold text-gray-200">—</p>
+          <p class="text-xs text-gray-600">$15 / M tokens</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 mb-1">Total tokens</p>
+          <p id="statTotalTokens" class="text-xl font-semibold text-gray-200">—</p>
+        </div>
+      </div>
+    </div>
 
-      try {
-        const res = await fetch('/api/admin/stats', {
-          headers: { 'x-admin-token': adminToken }
-        });
-        if (res.status === 401) {
-          document.getElementById('loginError').classList.remove('hidden');
-          return;
-        }
-        const d = await res.json();
-        document.getElementById('loginSection').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
+    <!-- SerpAPI mensual -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs text-gray-500 uppercase tracking-widest">SerpAPI — búsquedas este mes</p>
+        <p id="serpapiMonthLabel" class="text-xs font-semibold text-gray-300">—</p>
+      </div>
+      <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden my-3">
+        <div id="serpapiBar" class="progress-bar h-full rounded-full bg-blue-500" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-600">
+        <span>0</span>
+        <span id="serpapiWarning" class="font-medium"></span>
+        <span>100 (free tier)</span>
+      </div>
+    </div>
 
-        document.getElementById('statCost').textContent = '$' + d.costUSD.toFixed(4);
-        document.getElementById('statInputTokens').textContent = d.inputTokens.toLocaleString('es-AR');
-        document.getElementById('statOutputTokens').textContent = d.outputTokens.toLocaleString('es-AR');
-        document.getElementById('statTotalTokens').textContent = d.totalTokens.toLocaleString('es-AR');
-        document.getElementById('statSerpapi').textContent = d.serpapi;
-        document.getElementById('statClaude').textContent = d.claude;
-        document.getElementById('statCacheHits').textContent = d.cacheHits;
-        document.getElementById('statCacheMisses').textContent = d.cacheMisses;
-        document.getElementById('statCacheSize').textContent = d.cacheSize;
-        document.getElementById('statBlocked').textContent = d.rateLimitBlocks;
-        document.getElementById('statGlobal').textContent = d.globalUsageToday;
-        document.getElementById('statIps').textContent = d.uniqueIpsToday;
-        document.getElementById('statStarted').textContent = new Date(d.startedAt).toLocaleString('es-AR');
-        document.getElementById('lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR');
-      } catch {
-        document.getElementById('loginError').classList.remove('hidden');
-      }
-    }
+    <!-- Límite diario global -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs text-gray-500 uppercase tracking-widest">Consultas globales hoy</p>
+        <p id="globalLabel" class="text-xs font-semibold text-gray-300">—</p>
+      </div>
+      <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden my-3">
+        <div id="globalBar" class="progress-bar h-full rounded-full bg-green-500" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-600">
+        <span>0</span>
+        <span id="globalIps" class="font-medium"></span>
+        <span id="globalMax">50 (límite diario)</span>
+      </div>
+    </div>
 
-    async function resetIp() {
-      const res = await fetch('/api/admin/reset-ip', {
-        method: 'POST',
-        headers: { 'x-admin-token': adminToken }
-      });
+    <!-- Eficiencia del caché -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs text-gray-500 uppercase tracking-widest">Eficiencia del caché</p>
+        <p id="cacheEffLabel" class="text-xs font-semibold text-green-400">—</p>
+      </div>
+      <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden my-3">
+        <div id="cacheBar" class="progress-bar h-full rounded-full bg-green-500" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-600">
+        <span id="cacheMissLabel">— misses</span>
+        <span>de <span id="cacheTotalLabel">—</span> consultas totales</span>
+        <span id="cacheHitLabel">— hits</span>
+      </div>
+    </div>
+
+    <!-- Grid stats -->
+    <div class="grid grid-cols-2 gap-4 mb-8">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <p class="text-xs text-gray-500 mb-1">Llamadas a Claude</p>
+        <p id="statClaude" class="text-3xl font-bold text-white">—</p>
+        <p class="text-xs text-gray-600 mt-1">respuestas generadas</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <p class="text-xs text-gray-500 mb-1">Bloqueados por rate limit</p>
+        <p id="statBlocked" class="text-3xl font-bold text-red-400">—</p>
+        <p class="text-xs text-gray-600 mt-1">requests denegados</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <p class="text-xs text-gray-500 mb-1">Respuestas en caché</p>
+        <p id="statCacheSize" class="text-3xl font-bold text-white">—</p>
+        <p class="text-xs text-gray-600 mt-1">guardadas en sesión</p>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5">
+        <p class="text-xs text-gray-500 mb-1">IPs únicas hoy</p>
+        <p id="statIps" class="text-3xl font-bold text-white">—</p>
+        <p class="text-xs text-gray-600 mt-1">usuarios distintos</p>
+      </div>
+    </div>
+
+    <div class="flex gap-3">
+      <button onclick="loadStats()"
+        class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-5 py-2.5 rounded-xl transition-colors">
+        Actualizar
+      </button>
+      <button onclick="resetIp()"
+        class="bg-cruze-red hover:bg-cruze-darkred text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors">
+        Resetear mi IP
+      </button>
+    </div>
+    <p id="resetMsg" class="hidden text-green-400 text-xs mt-3"></p>
+    <p class="text-xs text-gray-700 mt-6">Estadísticas desde: <span id="statStarted"></span></p>
+  </div>
+</div>
+
+<script>
+  let adminToken = '';
+
+  function setBar(barId, pct, warnAt) {
+    const bar = document.getElementById(barId);
+    bar.style.width = Math.min(pct, 100) + '%';
+    if (pct >= 90) bar.className = bar.className.replace(/bg-\w+-\d+/, 'bg-red-500');
+    else if (pct >= warnAt) bar.className = bar.className.replace(/bg-\w+-\d+/, 'bg-yellow-500');
+  }
+
+  async function loadStats() {
+    const input = document.getElementById('tokenInput');
+    adminToken = input ? input.value.trim() : adminToken;
+    if (!adminToken) return;
+
+    try {
+      const res = await fetch('/api/admin/stats', { headers: { 'x-admin-token': adminToken } });
+      if (res.status === 401) { document.getElementById('loginError').classList.remove('hidden'); return; }
       const d = await res.json();
-      const msg = document.getElementById('resetMsg');
-      msg.textContent = d.message || d.error;
-      msg.classList.remove('hidden');
-      setTimeout(() => msg.classList.add('hidden'), 3000);
-      loadStats();
+
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('dashboard').classList.remove('hidden');
+
+      // Costo
+      document.getElementById('statCost').textContent = '$' + d.costUSD.toFixed(4);
+      document.getElementById('statInputTokens').textContent = Number(d.inputTokens).toLocaleString('es-AR');
+      document.getElementById('statOutputTokens').textContent = Number(d.outputTokens).toLocaleString('es-AR');
+      document.getElementById('statTotalTokens').textContent = Number(d.totalTokens).toLocaleString('es-AR');
+
+      // SerpAPI mensual
+      const serpapiPct = Math.round((d.serpapiThisMonth / d.serpapiMonthlyLimit) * 100);
+      document.getElementById('serpapiMonthLabel').textContent = `${d.serpapiThisMonth} / ${d.serpapiMonthlyLimit} (${serpapiPct}%)`;
+      setBar('serpapiBar', serpapiPct, 70);
+      document.getElementById('serpapiWarning').textContent =
+        serpapiPct >= 90 ? '⚠️ Límite casi alcanzado' :
+        serpapiPct >= 70 ? '⚡ Quedan pocas búsquedas' : `Quedan ${d.serpapiMonthlyLimit - d.serpapiThisMonth} búsquedas`;
+      document.getElementById('serpapiWarning').className = 'font-medium ' + (serpapiPct >= 90 ? 'text-red-400' : serpapiPct >= 70 ? 'text-yellow-400' : 'text-gray-500');
+
+      // Global diario
+      const globalPct = Math.round((d.globalUsageToday / d.globalLimit) * 100);
+      document.getElementById('globalLabel').textContent = `${d.globalUsageToday} / ${d.globalLimit} consultas (${globalPct}%)`;
+      document.getElementById('globalMax').textContent = `${d.globalLimit} (límite diario)`;
+      setBar('globalBar', globalPct, 70);
+      document.getElementById('globalIps').textContent = `${d.uniqueIpsToday} IP${d.uniqueIpsToday !== 1 ? 's' : ''} activa${d.uniqueIpsToday !== 1 ? 's' : ''}`;
+
+      // Cache
+      const cachePct = d.cacheEfficiency;
+      document.getElementById('cacheEffLabel').textContent = `${cachePct}% de ahorro`;
+      document.getElementById('cacheEffLabel').className = 'text-xs font-semibold ' + (cachePct >= 50 ? 'text-green-400' : cachePct >= 20 ? 'text-yellow-400' : 'text-gray-400');
+      setBar('cacheBar', cachePct, 30);
+      document.getElementById('cacheHitLabel').textContent = `${d.cacheHits} hits`;
+      document.getElementById('cacheMissLabel').textContent = `${d.cacheMisses} misses`;
+      document.getElementById('cacheTotalLabel').textContent = d.totalRequests;
+
+      // Cards
+      document.getElementById('statClaude').textContent = d.claude;
+      document.getElementById('statBlocked').textContent = d.rateLimitBlocks;
+      document.getElementById('statCacheSize').textContent = d.cacheSize;
+      document.getElementById('statIps').textContent = d.uniqueIpsToday;
+      document.getElementById('statStarted').textContent = new Date(d.startedAt).toLocaleString('es-AR');
+      document.getElementById('lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR');
+    } catch {
+      document.getElementById('loginError').classList.remove('hidden');
     }
+  }
 
-    document.getElementById('tokenInput')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') loadStats();
-    });
+  async function resetIp() {
+    const res = await fetch('/api/admin/reset-ip', { method: 'POST', headers: { 'x-admin-token': adminToken } });
+    const d = await res.json();
+    const msg = document.getElementById('resetMsg');
+    msg.textContent = d.message || d.error;
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), 3000);
+    loadStats();
+  }
 
-    setInterval(() => { if (adminToken) loadStats(); }, 30000);
-  </script>
+  document.getElementById('tokenInput')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') loadStats();
+  });
+
+  setInterval(() => { if (adminToken) loadStats(); }, 30000);
+</script>
 </body>
 </html>

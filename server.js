@@ -85,12 +85,14 @@ async function incrStat(key) {
 }
 
 async function getStats() {
-  const [serpapi, claude, cacheHits, cacheMisses, rateLimitBlocks, startedAt] = await Promise.all([
+  const [serpapi, claude, cacheHits, cacheMisses, rateLimitBlocks, inputTokens, outputTokens, startedAt] = await Promise.all([
     redis.get('stats:serpapi'),
     redis.get('stats:claude'),
     redis.get('stats:cacheHits'),
     redis.get('stats:cacheMisses'),
     redis.get('stats:rateLimitBlocks'),
+    redis.get('stats:inputTokens'),
+    redis.get('stats:outputTokens'),
     redis.get('stats:startedAt'),
   ]);
 
@@ -98,12 +100,21 @@ async function getStats() {
     await redis.set('stats:startedAt', new Date().toISOString());
   }
 
+  const input = inputTokens || 0;
+  const output = outputTokens || 0;
+  // claude-sonnet-4-5: $3/MTok input, $15/MTok output
+  const costUSD = ((input * 3) + (output * 15)) / 1_000_000;
+
   return {
     serpapi: serpapi || 0,
     claude: claude || 0,
     cacheHits: cacheHits || 0,
     cacheMisses: cacheMisses || 0,
     rateLimitBlocks: rateLimitBlocks || 0,
+    inputTokens: input,
+    outputTokens: output,
+    totalTokens: input + output,
+    costUSD: Math.round(costUSD * 10000) / 10000,
     startedAt: startedAt || new Date().toISOString(),
   };
 }
@@ -256,7 +267,11 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
     });
 
     const answer = message.content[0].text;
-    await incrStat('claude');
+    await Promise.all([
+      incrStat('claude'),
+      redis.incrby('stats:inputTokens', message.usage.input_tokens),
+      redis.incrby('stats:outputTokens', message.usage.output_tokens),
+    ]);
 
     const sources = searchResults.map((item, i) => ({
       index: i + 1,

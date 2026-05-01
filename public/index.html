@@ -182,11 +182,6 @@
     </div>
   </header>
 
-  <!-- Ticker -->
-  <div id="tickerWrap" class="ticker-wrap hidden">
-    <div id="tickerTrack" class="ticker-track"></div>
-  </div>
-
   <!-- Hero -->
   <main class="max-w-4xl mx-auto px-6 pt-16 pb-10">
     <div class="text-center mb-10">
@@ -228,23 +223,9 @@
         </button>
       </div>
 
-      <!-- Example queries -->
-      <div class="flex flex-wrap gap-2 mt-4 justify-center">
-        <button type="button" class="example-btn text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-full transition-colors">
-          Consumo 1.4 Turbo ciudad
-        </button>
-        <button type="button" class="example-btn text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-full transition-colors">
-          Problemas comunes Cruze 2013
-        </button>
-        <button type="button" class="example-btn text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-full transition-colors">
-          Cambio aceite motor 1.6
-        </button>
-        <button type="button" class="example-btn text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-full transition-colors">
-          Chip de potencia vale la pena
-        </button>
-        <button type="button" class="example-btn text-xs bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-gray-200 px-3 py-1.5 rounded-full transition-colors">
-          Diferencia LT vs LTZ
-        </button>
+      <!-- Ticker de preguntas recientes -->
+      <div id="tickerWrap" class="ticker-wrap hidden mt-4 rounded-xl overflow-hidden">
+        <div id="tickerTrack" class="ticker-track"></div>
       </div>
 
       <!-- Quota counter -->
@@ -410,13 +391,6 @@
     fetchRecentQueries();
     setInterval(fetchRecentQueries, 30000);
 
-    // Example query buttons
-    document.querySelectorAll('.example-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        input.value = btn.textContent.trim();
-        input.focus();
-      });
-    });
 
     function getDomainClass(displayLink) {
       if (displayLink.includes('reddit')) return 'domain-reddit';

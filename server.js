@@ -58,7 +58,7 @@ function findCacheEntry(query) {
 
   return valid.find(e => {
     const matches = keywords.filter(k => e.query.includes(k)).length;
-    return matches / keywords.length >= 0.75;
+    return matches / keywords.length >= 0.60;
   }) || null;
 }
 

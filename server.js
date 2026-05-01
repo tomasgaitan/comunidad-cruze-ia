@@ -218,6 +218,10 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
   }
 });
 
+app.get('/api/admin/debug', (req, res) => {
+  res.json({ token_set: !!process.env.ADMIN_TOKEN, token_length: (process.env.ADMIN_TOKEN || '').length });
+});
+
 app.post('/api/admin/reset-ip', (req, res) => {
   const token = req.headers['x-admin-token'];
   if (!token || token !== process.env.ADMIN_TOKEN) {

@@ -383,6 +383,23 @@
     setInterval(fetchRecentQueries, 30000);
 
 
+    function getSourceLabel(displayLink) {
+      const d = (displayLink || '').toLowerCase();
+      if (d.includes('reddit')) return 'Reddit';
+      if (d.includes('youtube')) return 'YouTube';
+      if (d.includes('wikipedia')) return 'Wikipedia';
+      if (d.includes('autocosmos')) return 'Autocosmos';
+      if (d.includes('mercadolibre')) return 'MercadoLibre';
+      if (d.includes('infobae')) return 'Infobae';
+      if (d.includes('clarin')) return 'Clarín';
+      if (d.includes('motor')) return 'Foro Motor';
+      if (d.includes('mecanica') || d.includes('mecánica')) return 'Foro Mecánica';
+      if (d.includes('chevrolet')) return 'Chevrolet';
+      const match = d.match(/([a-z0-9-]+)\.(com|net|org|ar|mx|cl|co)/);
+      if (match) return match[1].charAt(0).toUpperCase() + match[1].slice(1);
+      return displayLink;
+    }
+
     function getDomainClass(displayLink) {
       if (displayLink.includes('reddit')) return 'domain-reddit';
       if (displayLink.includes('youtube')) return 'domain-youtube';
@@ -478,7 +495,7 @@
       html = html.replace(/\[(\d+)\]/g, (match, n) => {
         const source = sources && sources.find(s => s.index === parseInt(n));
         if (source) {
-          return `<a href="${source.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center w-4 h-4 rounded-full bg-cruze-red text-white text-[10px] font-bold no-underline hover:bg-cruze-darkred transition-colors align-super ml-0.5" title="${escapeHtml(source.title)}">${n}</a>`;
+          return `<a href="${source.link}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-gray-300 hover:text-white text-[11px] font-medium no-underline px-2 py-0.5 rounded-full transition-colors align-middle mx-0.5" title="${escapeHtml(source.title)}">${getSourceLabel(source.displayLink)}</a>`;
         }
         return `<sup class="text-yellow-400 font-bold text-xs">[${n}]</sup>`;
       });

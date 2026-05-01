@@ -17,6 +17,7 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_RECENT = 20;
 
 let recentQueries = [];
+let stats = { serpapi: 0, claude: 0, cacheHits: 0, cacheMisses: 0, rateLimitBlocks: 0, startedAt: new Date().toISOString() };
 
 // --- Estado en memoria (cargado desde disco al iniciar) ---
 // Evita leer archivos en cada request y elimina race conditions de I/O.
@@ -164,7 +165,7 @@ app.post('/api/search', async (req, res) => {
   // Cache hit: no consume cuota
   const cached = findCacheEntry(trimmedQuery);
   if (cached) {
-    console.log(`[CACHE HIT] "${normalizeQuery(trimmedQuery)}"`);
+    stats.cacheHits++;
     return res.json({
       answer: cached.answer,
       sources: cached.sources,
@@ -173,11 +174,12 @@ app.post('/api/search', async (req, res) => {
     });
   }
 
-  console.log(`[CACHE MISS] "${normalizeQuery(trimmedQuery)}"`);
+  stats.cacheMisses++;
 
   // Verificar y consumir cuota
   const limit = checkAndIncrement(ip);
   if (!limit.allowed) {
+    stats.rateLimitBlocks++;
     const error = limit.reason === 'global'
       ? 'El servicio alcanzó el límite diario. Volvé mañana.'
       : 'Alcanzaste el límite de 5 consultas por hoy. Volvé mañana.';
@@ -186,6 +188,7 @@ app.post('/api/search', async (req, res) => {
 
   try {
     const searchResults = await searchGoogle(trimmedQuery);
+    stats.serpapi++;
 
     if (searchResults.length === 0) {
       return res.json({
@@ -219,6 +222,7 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
     });
 
     const answer = message.content[0].text;
+    stats.claude++;
 
     const sources = searchResults.map((item, i) => ({
       index: i + 1,
@@ -249,6 +253,19 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
 
     return res.status(500).json({ error: 'Ocurrió un error al procesar tu consulta. Intentá de nuevo.' });
   }
+});
+
+app.get('/api/admin/stats', (req, res) => {
+  const token = req.headers['x-admin-token'];
+  if (!token || token !== process.env.ADMIN_TOKEN) {
+    return res.status(401).json({ error: 'No autorizado.' });
+  }
+  res.json({
+    ...stats,
+    cacheSize: cacheStore.length,
+    globalUsageToday: rateStore.global,
+    uniqueIpsToday: Object.keys(rateStore.ips).length,
+  });
 });
 
 app.post('/api/admin/reset-ip', (req, res) => {

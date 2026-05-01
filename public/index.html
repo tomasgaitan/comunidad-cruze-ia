@@ -279,8 +279,34 @@
     </div>
   </main>
 
+  <!-- Feedback -->
+  <section class="max-w-2xl mx-auto px-6 pb-16">
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+      <h2 class="text-base font-semibold text-gray-200 mb-1">¿Tenés alguna mejora en mente?</h2>
+      <p class="text-sm text-gray-500 mb-4">Contanos qué le agregarías o cambiarías. Leemos todo.</p>
+      <form id="feedbackForm" action="https://formspree.io/f/REEMPLAZAR_ID" method="POST">
+        <textarea
+          name="message"
+          rows="3"
+          placeholder="Ej: estaría bueno que también busque en foros argentinos..."
+          class="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none focus:border-cruze-red resize-none transition-colors"
+          required
+        ></textarea>
+        <div class="flex items-center justify-between mt-3">
+          <p id="feedbackMsg" class="text-xs text-green-400 hidden">¡Gracias! Tu sugerencia fue enviada.</p>
+          <button
+            type="submit"
+            class="ml-auto bg-cruze-red hover:bg-cruze-darkred text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
+          >
+            Enviar sugerencia
+          </button>
+        </div>
+      </form>
+    </div>
+  </section>
+
   <!-- Footer -->
-  <footer class="border-t border-gray-800 py-6 mt-10">
+  <footer class="border-t border-gray-800 py-6">
     <p class="text-center text-gray-600 text-xs">
       Comunidad Cruze IA &mdash; Los resultados son orientativos. Consultá siempre a un mecánico certificado.
     </p>
@@ -381,6 +407,34 @@
 
     fetchRecentQueries();
     setInterval(fetchRecentQueries, 30000);
+
+    // --- Feedback form ---
+    const feedbackForm = document.getElementById('feedbackForm');
+    const feedbackMsg = document.getElementById('feedbackMsg');
+    feedbackForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = feedbackForm.querySelector('button[type=submit]');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      try {
+        const res = await fetch(feedbackForm.action, {
+          method: 'POST',
+          body: new FormData(feedbackForm),
+          headers: { 'Accept': 'application/json' },
+        });
+        if (res.ok) {
+          feedbackMsg.classList.remove('hidden');
+          feedbackForm.reset();
+          btn.textContent = 'Enviado ✓';
+        } else {
+          btn.disabled = false;
+          btn.textContent = 'Enviar sugerencia';
+        }
+      } catch {
+        btn.disabled = false;
+        btn.textContent = 'Enviar sugerencia';
+      }
+    });
 
 
     function getSourceLabel(displayLink) {

@@ -28,16 +28,38 @@ function today() {
 
 // --- Cache helpers ---
 
+const STOP_WORDS = new Set([
+  'el','la','los','las','un','una','unos','unas','de','del','en','a','al',
+  'con','por','para','qué','que','cómo','como','cuál','cual','cuales',
+  'es','son','se','me','mi','su','sus','y','o','no','si','le','lo','uso',
+  'usa','usar','tiene','hay','puedo','debo','dónde','donde','cuando','cuándo',
+]);
+
 function normalizeQuery(q) {
   return q.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function extractKeywords(q) {
+  return normalizeQuery(q)
+    .split(' ')
+    .filter(w => w.length > 2 && !STOP_WORDS.has(w));
 }
 
 function findCacheEntry(query) {
   const norm = normalizeQuery(query);
   const cutoff = Date.now() - CACHE_TTL_MS;
-  return cacheStore.find(
-    e => e.query === norm && new Date(e.timestamp).getTime() > cutoff
-  ) || null;
+  const valid = cacheStore.filter(e => new Date(e.timestamp).getTime() > cutoff);
+
+  const exact = valid.find(e => e.query === norm);
+  if (exact) return exact;
+
+  const keywords = extractKeywords(query);
+  if (keywords.length === 0) return null;
+
+  return valid.find(e => {
+    const matches = keywords.filter(k => e.query.includes(k)).length;
+    return matches / keywords.length >= 0.75;
+  }) || null;
 }
 
 function saveCacheEntry(query, answer, sources) {

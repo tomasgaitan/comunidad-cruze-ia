@@ -233,8 +233,19 @@ app.post('/api/search', async (req, res) => {
   }
 
   try {
-    const searchResults = await searchGoogle(trimmedQuery);
     const ym = new Date().toISOString().slice(0, 7);
+
+    // Verificar presupuesto mensual antes de llamar a Claude
+    const [monthInput, monthOutput] = await Promise.all([
+      redis.get(`stats:inputTokens:month:${ym}`),
+      redis.get(`stats:outputTokens:month:${ym}`),
+    ]);
+    const monthlyCost = ((monthInput || 0) * 3 + (monthOutput || 0) * 15) / 1_000_000;
+    if (monthlyCost >= MONTHLY_BUDGET_USD) {
+      return res.status(503).json({ error: 'El servicio alcanzó el presupuesto mensual. Volvé el mes que viene.' });
+    }
+
+    const searchResults = await searchGoogle(trimmedQuery);
     await Promise.all([
       incrStat('serpapi'),
       redis.incr(`stats:serpapi:month:${ym}`),
@@ -250,17 +261,6 @@ app.post('/api/search', async (req, res) => {
     }
 
     const sourcesContext = buildSourcesContext(searchResults);
-
-    // Verificar presupuesto mensual antes de llamar a Claude
-    const ym = new Date().toISOString().slice(0, 7);
-    const [monthInput, monthOutput] = await Promise.all([
-      redis.get(`stats:inputTokens:month:${ym}`),
-      redis.get(`stats:outputTokens:month:${ym}`),
-    ]);
-    const monthlyCost = ((monthInput || 0) * 3 + (monthOutput || 0) * 15) / 1_000_000;
-    if (monthlyCost >= MONTHLY_BUDGET_USD) {
-      return res.status(503).json({ error: `El servicio alcanzó el presupuesto mensual. Volvé el mes que viene.` });
-    }
 
     const systemPrompt = `Sos un experto mecánico y entusiasta del Chevrolet Cruze. Tu misión es ayudar a los propietarios y entusiastas del Cruze respondiendo sus preguntas de forma clara, práctica y en español rioplatense.
 
@@ -284,15 +284,14 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
     });
 
     const answer = message.content[0].text;
-    const ym2 = new Date().toISOString().slice(0, 7);
     await Promise.all([
       incrStat('claude'),
       redis.incrby('stats:inputTokens', message.usage.input_tokens),
       redis.incrby('stats:outputTokens', message.usage.output_tokens),
-      redis.incrby(`stats:inputTokens:month:${ym2}`, message.usage.input_tokens),
-      redis.incrby(`stats:outputTokens:month:${ym2}`, message.usage.output_tokens),
-      redis.expire(`stats:inputTokens:month:${ym2}`, 60 * 60 * 24 * 35),
-      redis.expire(`stats:outputTokens:month:${ym2}`, 60 * 60 * 24 * 35),
+      redis.incrby(`stats:inputTokens:month:${ym}`, message.usage.input_tokens),
+      redis.incrby(`stats:outputTokens:month:${ym}`, message.usage.output_tokens),
+      redis.expire(`stats:inputTokens:month:${ym}`, 60 * 60 * 24 * 35),
+      redis.expire(`stats:outputTokens:month:${ym}`, 60 * 60 * 24 * 35),
     ]);
 
     const sources = searchResults.map((item, i) => ({

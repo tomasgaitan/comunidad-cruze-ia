@@ -282,10 +282,32 @@
   <!-- Feedback -->
   <section class="max-w-2xl mx-auto px-6 pb-16">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-      <h2 class="text-base font-semibold text-gray-200 mb-1">¿Tenés alguna mejora en mente?</h2>
-      <p class="text-sm text-gray-500 mb-4">Contanos qué le agregarías o cambiarías. Leemos todo.</p>
+
+      <!-- Tabs -->
+      <div class="flex gap-2 mb-5">
+        <button type="button" id="tabSugerencia" onclick="switchTab('sugerencia')"
+          class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition-colors bg-cruze-red text-white">
+          💡 Sugerencia
+        </button>
+        <button type="button" id="tabProyecto" onclick="switchTab('proyecto')"
+          class="tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition-colors bg-gray-800 text-gray-400 hover:text-gray-200">
+          🛠️ Necesito ayuda con un proyecto
+        </button>
+      </div>
+
+      <div id="tabContentSugerencia">
+        <h2 class="text-base font-semibold text-gray-200 mb-1">¿Tenés alguna mejora en mente?</h2>
+        <p class="text-sm text-gray-500 mb-4">Contanos qué le agregarías o cambiarías. Leemos todo.</p>
+      </div>
+      <div id="tabContentProyecto" class="hidden">
+        <h2 class="text-base font-semibold text-gray-200 mb-1">¿Necesitás ayuda con un proyecto?</h2>
+        <p class="text-sm text-gray-500 mb-4">Contame en qué estás trabajando y cómo puedo ayudarte.</p>
+      </div>
+
       <form id="feedbackForm" action="https://formspree.io/f/xojrvelw" method="POST">
+        <input type="hidden" name="tipo" id="feedbackTipo" value="Sugerencia" />
         <textarea
+          id="feedbackTextarea"
           name="message"
           rows="3"
           placeholder="Ej: estaría bueno que también busque en foros argentinos..."
@@ -293,9 +315,10 @@
           required
         ></textarea>
         <div class="flex items-center justify-between mt-3">
-          <p id="feedbackMsg" class="text-xs text-green-400 hidden">¡Gracias! Tu sugerencia fue enviada.</p>
+          <p id="feedbackMsg" class="text-xs text-green-400 hidden">¡Gracias! Tu mensaje fue enviado.</p>
           <button
             type="submit"
+            id="feedbackSubmitBtn"
             class="ml-auto bg-cruze-red hover:bg-cruze-darkred text-white text-sm font-semibold px-5 py-2 rounded-xl transition-colors"
           >
             Enviar sugerencia
@@ -407,6 +430,20 @@
 
     fetchRecentQueries();
     setInterval(fetchRecentQueries, 30000);
+
+    // --- Feedback tabs ---
+    function switchTab(tab) {
+      const isSugerencia = tab === 'sugerencia';
+      document.getElementById('tabSugerencia').className = `tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${isSugerencia ? 'bg-cruze-red text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`;
+      document.getElementById('tabProyecto').className = `tab-btn flex-1 py-2 rounded-xl text-sm font-semibold transition-colors ${!isSugerencia ? 'bg-cruze-red text-white' : 'bg-gray-800 text-gray-400 hover:text-gray-200'}`;
+      document.getElementById('tabContentSugerencia').classList.toggle('hidden', !isSugerencia);
+      document.getElementById('tabContentProyecto').classList.toggle('hidden', isSugerencia);
+      document.getElementById('feedbackTipo').value = isSugerencia ? 'Sugerencia' : 'Ayuda con proyecto';
+      document.getElementById('feedbackTextarea').placeholder = isSugerencia
+        ? 'Ej: estaría bueno que también busque en foros argentinos...'
+        : 'Ej: estoy haciendo una app para... y necesito ayuda con...';
+      document.getElementById('feedbackSubmitBtn').textContent = isSugerencia ? 'Enviar sugerencia' : 'Enviar mensaje';
+    }
 
     // --- Feedback form ---
     const feedbackForm = document.getElementById('feedbackForm');

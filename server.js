@@ -21,6 +21,7 @@ const IP_LIMIT = 5;
 const GLOBAL_LIMIT = 50;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_RECENT = 20;
+const MONTHLY_BUDGET_USD = parseFloat(process.env.MONTHLY_BUDGET_USD || '5');
 
 let cacheStore = [];
 let recentQueries = [];
@@ -250,6 +251,17 @@ app.post('/api/search', async (req, res) => {
 
     const sourcesContext = buildSourcesContext(searchResults);
 
+    // Verificar presupuesto mensual antes de llamar a Claude
+    const ym = new Date().toISOString().slice(0, 7);
+    const [monthInput, monthOutput] = await Promise.all([
+      redis.get(`stats:inputTokens:month:${ym}`),
+      redis.get(`stats:outputTokens:month:${ym}`),
+    ]);
+    const monthlyCost = ((monthInput || 0) * 3 + (monthOutput || 0) * 15) / 1_000_000;
+    if (monthlyCost >= MONTHLY_BUDGET_USD) {
+      return res.status(503).json({ error: `El servicio alcanzó el presupuesto mensual. Volvé el mes que viene.` });
+    }
+
     const systemPrompt = `Sos un experto mecánico y entusiasta del Chevrolet Cruze. Tu misión es ayudar a los propietarios y entusiastas del Cruze respondiendo sus preguntas de forma clara, práctica y en español rioplatense.
 
 Usá los resultados de búsqueda proporcionados como base para tu respuesta. Sé específico, menciona modelos y años cuando sea relevante, y citá las fuentes usando el número entre corchetes [N].
@@ -272,10 +284,15 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
     });
 
     const answer = message.content[0].text;
+    const ym2 = new Date().toISOString().slice(0, 7);
     await Promise.all([
       incrStat('claude'),
       redis.incrby('stats:inputTokens', message.usage.input_tokens),
       redis.incrby('stats:outputTokens', message.usage.output_tokens),
+      redis.incrby(`stats:inputTokens:month:${ym2}`, message.usage.input_tokens),
+      redis.incrby(`stats:outputTokens:month:${ym2}`, message.usage.output_tokens),
+      redis.expire(`stats:inputTokens:month:${ym2}`, 60 * 60 * 24 * 35),
+      redis.expire(`stats:outputTokens:month:${ym2}`, 60 * 60 * 24 * 35),
     ]);
 
     const sources = searchResults.map((item, i) => ({
@@ -314,12 +331,15 @@ app.get('/api/admin/stats', async (req, res) => {
     return res.status(401).json({ error: 'No autorizado.' });
   }
   const ym = new Date().toISOString().slice(0, 7);
-  const [s, globalUsageToday, uniqueIpsRaw, serpapiThisMonth] = await Promise.all([
+  const [s, globalUsageToday, uniqueIpsRaw, serpapiThisMonth, monthInput, monthOutput] = await Promise.all([
     getStats(),
     redis.get(`rate:global:${today()}`),
     redis.keys(`rate:ip:${today()}:*`),
     redis.get(`stats:serpapi:month:${ym}`),
+    redis.get(`stats:inputTokens:month:${ym}`),
+    redis.get(`stats:outputTokens:month:${ym}`),
   ]);
+  const monthlyCostUSD = Math.round((((monthInput || 0) * 3 + (monthOutput || 0) * 15) / 1_000_000) * 10000) / 10000;
   const totalRequests = (s.cacheHits || 0) + (s.cacheMisses || 0);
   const cacheEfficiency = totalRequests > 0 ? Math.round((s.cacheHits / totalRequests) * 100) : 0;
   res.json({
@@ -332,6 +352,8 @@ app.get('/api/admin/stats', async (req, res) => {
     serpapiMonthlyLimit: 250,
     cacheEfficiency,
     totalRequests,
+    monthlyCostUSD,
+    monthlyBudgetUSD: MONTHLY_BUDGET_USD,
   });
 });
 

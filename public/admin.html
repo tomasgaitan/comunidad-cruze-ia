@@ -42,6 +42,22 @@
       <span id="lastUpdate" class="text-xs text-gray-600"></span>
     </div>
 
+    <!-- Presupuesto mensual -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+      <div class="flex items-center justify-between mb-1">
+        <p class="text-xs text-gray-500 uppercase tracking-widest">Presupuesto mensual Claude</p>
+        <p id="budgetLabel" class="text-xs font-semibold text-gray-300">—</p>
+      </div>
+      <div class="w-full bg-gray-800 rounded-full h-3 overflow-hidden my-3">
+        <div id="budgetBar" class="progress-bar h-full rounded-full bg-green-500" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between text-xs text-gray-600">
+        <span>$0</span>
+        <span id="budgetWarning" class="font-medium"></span>
+        <span id="budgetMax">$5.00 límite</span>
+      </div>
+    </div>
+
     <!-- Costo estimado -->
     <div class="bg-gray-900 border border-cruze-red rounded-2xl p-5 mb-6">
       <p class="text-xs text-gray-500 uppercase tracking-widest mb-3">Costo estimado acumulado (Claude)</p>
@@ -176,6 +192,18 @@
 
       document.getElementById('loginSection').classList.add('hidden');
       document.getElementById('dashboard').classList.remove('hidden');
+
+      // Presupuesto mensual
+      const budgetPct = Math.round((d.monthlyCostUSD / d.monthlyBudgetUSD) * 100);
+      document.getElementById('budgetLabel').textContent = `$${d.monthlyCostUSD.toFixed(4)} / $${d.monthlyBudgetUSD.toFixed(2)} (${budgetPct}%)`;
+      document.getElementById('budgetMax').textContent = `$${d.monthlyBudgetUSD.toFixed(2)} límite`;
+      setBar('budgetBar', budgetPct, 70);
+      document.getElementById('budgetWarning').textContent =
+        budgetPct >= 100 ? '🚫 Límite alcanzado — app bloqueada' :
+        budgetPct >= 90 ? '⚠️ Casi sin presupuesto' :
+        budgetPct >= 70 ? '⚡ Quedan pocos créditos' :
+        `Quedan $${(d.monthlyBudgetUSD - d.monthlyCostUSD).toFixed(4)}`;
+      document.getElementById('budgetWarning').className = 'font-medium ' + (budgetPct >= 90 ? 'text-red-400' : budgetPct >= 70 ? 'text-yellow-400' : 'text-gray-500');
 
       // Costo
       document.getElementById('statCost').textContent = '$' + d.costUSD.toFixed(4);

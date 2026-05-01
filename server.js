@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const axios = require('axios');
 const Anthropic = require('@anthropic-ai/sdk');
+const { Redis } = require('@upstash/redis');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -10,27 +11,24 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL,
+  token: process.env.UPSTASH_REDIS_REST_TOKEN,
+});
 
 const IP_LIMIT = 5;
 const GLOBAL_LIMIT = 50;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_RECENT = 20;
 
-let recentQueries = [];
-let stats = { serpapi: 0, claude: 0, cacheHits: 0, cacheMisses: 0, rateLimitBlocks: 0, startedAt: new Date().toISOString() };
-
-// --- Estado en memoria (cargado desde disco al iniciar) ---
-// Evita leer archivos en cada request y elimina race conditions de I/O.
-
 let cacheStore = [];
-let rateStore = { date: '', global: 0, ips: {} };
+let recentQueries = [];
 
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-
-// --- Cache helpers ---
+// --- Cache helpers (en memoria) ---
 
 const STOP_WORDS = new Set([
   'el','la','los','las','un','una','unos','unas','de','del','en','a','al',
@@ -79,41 +77,73 @@ function addRecentQuery(query) {
   recentQueries = [query, ...recentQueries.filter(q => q !== query)].slice(0, MAX_RECENT);
 }
 
-// --- Rate limit helpers ---
+// --- Stats en Redis ---
 
-function ensureTodayRate() {
-  if (rateStore.date !== today()) {
-    rateStore = { date: today(), global: 0, ips: {} };
-  }
+async function incrStat(key) {
+  await redis.incr(`stats:${key}`);
 }
 
-function getRemainingForIp(ip) {
-  ensureTodayRate();
-  return Math.max(0, IP_LIMIT - (rateStore.ips[ip] || 0));
-}
+async function getStats() {
+  const [serpapi, claude, cacheHits, cacheMisses, rateLimitBlocks, startedAt] = await Promise.all([
+    redis.get('stats:serpapi'),
+    redis.get('stats:claude'),
+    redis.get('stats:cacheHits'),
+    redis.get('stats:cacheMisses'),
+    redis.get('stats:rateLimitBlocks'),
+    redis.get('stats:startedAt'),
+  ]);
 
-function checkAndIncrement(ip) {
-  ensureTodayRate();
-
-  if (rateStore.global >= GLOBAL_LIMIT) {
-    return { allowed: false, reason: 'global' };
+  if (!startedAt) {
+    await redis.set('stats:startedAt', new Date().toISOString());
   }
 
-  const ipUsed = rateStore.ips[ip] || 0;
-  if (ipUsed >= IP_LIMIT) {
-    return { allowed: false, reason: 'ip' };
-  }
-
-  rateStore.global += 1;
-  rateStore.ips[ip] = ipUsed + 1;
-
-  return { allowed: true, remaining: IP_LIMIT - rateStore.ips[ip] };
+  return {
+    serpapi: serpapi || 0,
+    claude: claude || 0,
+    cacheHits: cacheHits || 0,
+    cacheMisses: cacheMisses || 0,
+    rateLimitBlocks: rateLimitBlocks || 0,
+    startedAt: startedAt || new Date().toISOString(),
+  };
 }
+
+// --- Rate limit en Redis ---
 
 function getClientIp(req) {
   const forwarded = req.headers['x-forwarded-for'];
   if (forwarded) return forwarded.split(',')[0].trim();
   return req.ip || 'unknown';
+}
+
+async function getRemainingForIp(ip) {
+  const ipCount = await redis.get(`rate:ip:${today()}:${ip}`);
+  return Math.max(0, IP_LIMIT - (ipCount || 0));
+}
+
+async function checkAndIncrement(ip) {
+  const globalKey = `rate:global:${today()}`;
+  const ipKey = `rate:ip:${today()}:${ip}`;
+
+  const [globalCount, ipCount] = await Promise.all([
+    redis.get(globalKey),
+    redis.get(ipKey),
+  ]);
+
+  if ((globalCount || 0) >= GLOBAL_LIMIT) {
+    return { allowed: false, reason: 'global' };
+  }
+  if ((ipCount || 0) >= IP_LIMIT) {
+    return { allowed: false, reason: 'ip' };
+  }
+
+  await Promise.all([
+    redis.incr(globalKey),
+    redis.incr(ipKey),
+    redis.expire(globalKey, 172800),
+    redis.expire(ipKey, 172800),
+  ]);
+
+  return { allowed: true, remaining: IP_LIMIT - ((ipCount || 0) + 1) };
 }
 
 // --- Search & AI ---
@@ -147,9 +177,10 @@ app.get('/api/recent-queries', (req, res) => {
   res.json({ queries: recentQueries });
 });
 
-app.get('/api/quota', (req, res) => {
+app.get('/api/quota', async (req, res) => {
   const ip = getClientIp(req);
-  res.json({ remaining: getRemainingForIp(ip) });
+  const remaining = await getRemainingForIp(ip);
+  res.json({ remaining });
 });
 
 app.post('/api/search', async (req, res) => {
@@ -162,24 +193,22 @@ app.post('/api/search', async (req, res) => {
   const ip = getClientIp(req);
   const trimmedQuery = query.trim();
 
-  // Cache hit: no consume cuota
   const cached = findCacheEntry(trimmedQuery);
   if (cached) {
-    stats.cacheHits++;
+    await incrStat('cacheHits');
     return res.json({
       answer: cached.answer,
       sources: cached.sources,
       fromCache: true,
-      remaining: getRemainingForIp(ip),
+      remaining: await getRemainingForIp(ip),
     });
   }
 
-  stats.cacheMisses++;
+  await incrStat('cacheMisses');
 
-  // Verificar y consumir cuota
-  const limit = checkAndIncrement(ip);
+  const limit = await checkAndIncrement(ip);
   if (!limit.allowed) {
-    stats.rateLimitBlocks++;
+    await incrStat('rateLimitBlocks');
     const error = limit.reason === 'global'
       ? 'El servicio alcanzó el límite diario. Volvé mañana.'
       : 'Alcanzaste el límite de 5 consultas por hoy. Volvé mañana.';
@@ -188,7 +217,7 @@ app.post('/api/search', async (req, res) => {
 
   try {
     const searchResults = await searchGoogle(trimmedQuery);
-    stats.serpapi++;
+    await incrStat('serpapi');
 
     if (searchResults.length === 0) {
       return res.json({
@@ -222,7 +251,7 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
     });
 
     const answer = message.content[0].text;
-    stats.claude++;
+    await incrStat('claude');
 
     const sources = searchResults.map((item, i) => ({
       index: i + 1,
@@ -246,7 +275,6 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
     if (err.response?.status === 429) {
       return res.status(429).json({ error: 'Límite de búsquedas alcanzado. Intentá de nuevo en unos minutos.' });
     }
-
     if (err.status === 401) {
       return res.status(500).json({ error: 'Error de autenticación con la API de Claude. Verificá tu API key.' });
     }
@@ -255,30 +283,34 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
   }
 });
 
-app.get('/api/admin/stats', (req, res) => {
+app.get('/api/admin/stats', async (req, res) => {
   const token = req.headers['x-admin-token'];
   if (!token || token !== process.env.ADMIN_TOKEN) {
     return res.status(401).json({ error: 'No autorizado.' });
   }
+  const [s, globalUsageToday, uniqueIpsRaw] = await Promise.all([
+    getStats(),
+    redis.get(`rate:global:${today()}`),
+    redis.keys(`rate:ip:${today()}:*`),
+  ]);
   res.json({
-    ...stats,
+    ...s,
     cacheSize: cacheStore.length,
-    globalUsageToday: rateStore.global,
-    uniqueIpsToday: Object.keys(rateStore.ips).length,
+    globalUsageToday: globalUsageToday || 0,
+    uniqueIpsToday: uniqueIpsRaw.length,
   });
 });
 
-app.post('/api/admin/reset-ip', (req, res) => {
+app.post('/api/admin/reset-ip', async (req, res) => {
   const token = req.headers['x-admin-token'];
   if (!token || token !== process.env.ADMIN_TOKEN) {
     return res.status(401).json({ error: 'No autorizado.' });
   }
   const ip = getClientIp(req);
-  delete rateStore.ips[ip];
+  await redis.del(`rate:ip:${today()}:${ip}`);
   res.json({ ok: true, message: `Cuota reseteada para ${ip}.` });
 });
 
-// Fallback: cualquier error no manejado responde JSON (evita HTML de Express)
 app.use((err, req, res, next) => {
   console.error('Error no manejado:', err.message);
   res.status(500).json({ error: 'Error interno del servidor.' });

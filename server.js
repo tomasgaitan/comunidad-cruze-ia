@@ -218,6 +218,16 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
   }
 });
 
+app.post('/api/admin/reset-ip', (req, res) => {
+  const token = req.headers['x-admin-token'];
+  if (!token || token !== process.env.ADMIN_TOKEN) {
+    return res.status(401).json({ error: 'No autorizado.' });
+  }
+  const ip = getClientIp(req);
+  delete rateStore.ips[ip];
+  res.json({ ok: true, message: `Cuota reseteada para ${ip}.` });
+});
+
 // Fallback: cualquier error no manejado responde JSON (evita HTML de Express)
 app.use((err, req, res, next) => {
   console.error('Error no manejado:', err.message);

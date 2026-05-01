@@ -529,7 +529,7 @@
       if (active) {
         results.classList.add('hidden');
         errorState.classList.add('hidden');
-        const steps = ['Buscando en la web...', 'Analizando resultados...', 'Generando respuesta con Claude...'];
+        const steps = ['Buscando...', 'Analizando resultados...', 'Preparando tu respuesta...'];
         let i = 0;
         loadingText.textContent = steps[0];
         window._loadingInterval = setInterval(() => {

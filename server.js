@@ -279,7 +279,9 @@ app.post('/api/search', async (req, res) => {
 
 Usá los resultados de búsqueda proporcionados como base para tu respuesta. Sé específico, menciona modelos y años cuando sea relevante, y citá las fuentes usando el número entre corchetes [N].
 
-Estructura tu respuesta en secciones cuando aplique. Usá un tono amigable y cercano, como si fueras un mecánico de confianza.`;
+Estructura tu respuesta en secciones cuando aplique. Usá un tono amigable y cercano, como si fueras un mecánico de confianza.
+
+IMPORTANTE: No hagas preguntas de seguimiento al final de la respuesta. No pidas más detalles ni invites al usuario a escribir de nuevo. Solo respondé lo que se preguntó con la información disponible.`;
 
     const userMessage = `Pregunta del usuario sobre el Chevrolet Cruze: "${trimmedQuery}"
 

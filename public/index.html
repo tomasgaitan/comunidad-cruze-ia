@@ -279,6 +279,12 @@
     </div>
   </main>
 
+  <!-- FAQ -->
+  <section id="faqSection" class="hidden max-w-2xl mx-auto px-6 pb-10">
+    <h2 class="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-4">Preguntas más frecuentes</h2>
+    <div id="faqList" class="flex flex-col gap-2"></div>
+  </section>
+
   <!-- Feedback -->
   <section class="max-w-2xl mx-auto px-6 pb-16">
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
@@ -439,6 +445,34 @@
 
     fetchRecentQueries();
     setInterval(fetchRecentQueries, 30000);
+
+    // --- FAQ ---
+    async function fetchFaq() {
+      try {
+        const res = await fetch('/api/faq');
+        const data = await res.json();
+        if (!data.faq || data.faq.length === 0) return;
+        const list = document.getElementById('faqList');
+        list.innerHTML = '';
+        data.faq.forEach(item => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'flex items-center justify-between w-full text-left bg-gray-900 hover:bg-gray-800 border border-gray-800 hover:border-gray-600 rounded-xl px-4 py-3 transition-colors group';
+          btn.innerHTML = `
+            <span class="text-sm text-gray-300 group-hover:text-white">${escapeHtml(item.query)}</span>
+            <span class="text-xs text-gray-600 ml-3 flex-shrink-0">${item.count} ${item.count === 1 ? 'vez' : 'veces'}</span>
+          `;
+          btn.addEventListener('click', () => {
+            input.value = item.query;
+            input.focus();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          });
+          list.appendChild(btn);
+        });
+        document.getElementById('faqSection').classList.remove('hidden');
+      } catch {}
+    }
+    fetchFaq();
 
     // --- Feedback tabs ---
     function switchTab(tab) {

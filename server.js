@@ -79,6 +79,10 @@ function addRecentQuery(query) {
   recentQueries = [query, ...recentQueries.filter(q => q !== query)].slice(0, MAX_RECENT);
 }
 
+async function trackQueryFrequency(query) {
+  await redis.zincrby('stats:query:freq', 1, normalizeQuery(query));
+}
+
 // --- Stats en Redis ---
 
 async function incrStat(key) {
@@ -194,6 +198,15 @@ app.get('/api/recent-queries', (req, res) => {
   res.json({ queries: recentQueries });
 });
 
+app.get('/api/faq', async (req, res) => {
+  const results = await redis.zrange('stats:query:freq', 0, 9, { rev: true, withScores: true });
+  const faq = [];
+  for (let i = 0; i < results.length; i += 2) {
+    faq.push({ query: results[i], count: parseInt(results[i + 1]) });
+  }
+  res.json({ faq });
+});
+
 app.get('/api/quota', async (req, res) => {
   const ip = getClientIp(req);
   const remaining = await getRemainingForIp(ip);
@@ -305,6 +318,7 @@ Respondé la pregunta basándote en estos resultados. Citá las fuentes relevant
     try {
       saveCacheEntry(trimmedQuery, answer, sources);
       addRecentQuery(trimmedQuery);
+      await trackQueryFrequency(trimmedQuery);
     } catch (cacheErr) {
       console.error('Error guardando en caché:', cacheErr.message);
     }
